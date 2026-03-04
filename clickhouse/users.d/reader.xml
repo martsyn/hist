@@ -1,0 +1,13 @@
+<clickhouse>
+    <users>
+        <hist_reader>
+            <!-- SHA256 of "changeme_reader" -->
+            <password_sha256_hex>365079d827c54a14df0da1b101a324d9c0d25670b40b84474dea8817570f9cd0</password_sha256_hex>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>readonly</profile>
+            <quota>default</quota>
+        </hist_reader>
+    </users>
+</clickhouse>

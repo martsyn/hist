@@ -1,0 +1,9 @@
+#!/command/with-contenv /bin/sh
+# Wait for ClickHouse TCP port to be ready
+echo "Waiting for ClickHouse on port 9000..."
+until nc -z 127.0.0.1 9000; do
+    sleep 1
+done
+echo "ClickHouse ready. Starting hist server."
+
+cd /app/hist && exec dotnet /app/hist/Hist.Server.dll

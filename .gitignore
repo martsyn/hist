@@ -1,0 +1,22 @@
+.env
+*.user
+.DS_Store
+Thumbs.db
+
+# dotnet
+bin/
+obj/
+*.swp
+
+# node
+node_modules/
+frontend/dist/
+
+# clickhouse data
+clickhouse/data/
+clickhouse/logs/
+
+# IDE
+.vscode/
+.idea/
+*.suo

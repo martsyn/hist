@@ -1,0 +1,14 @@
+#!/bin/sh
+# Ensure data directories exist and are owned by clickhouse user
+mkdir -p /var/lib/clickhouse /var/log/clickhouse-server
+chown -R clickhouse:clickhouse /var/lib/clickhouse /var/log/clickhouse-server
+
+# Patch writer password from environment if set
+if [ -n "$CH_WRITE_PASSWORD" ]; then
+    HASH=$(echo -n "$CH_WRITE_PASSWORD" | sha256sum | awk '{print $1}')
+    sed -i "s|<password_sha256_hex>.*</password_sha256_hex>|<password_sha256_hex>${HASH}</password_sha256_hex>|" \
+        /etc/clickhouse-server/users.d/writer.xml
+fi
+
+exec s6-setuidgid clickhouse clickhouse-server \
+    --config-file=/etc/clickhouse-server/config.xml

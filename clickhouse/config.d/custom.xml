@@ -1,0 +1,26 @@
+<clickhouse>
+    <!-- HTTP interface (for IDE tools like DataGrip) -->
+    <http_port>8123</http_port>
+
+    <!-- TCP interface -->
+    <tcp_port>9000</tcp_port>
+    <listen_host>0.0.0.0</listen_host>
+
+    <!-- Disable interserver HTTP -->
+    <interserver_http_port>0</interserver_http_port>
+
+    <!-- Data and log paths -->
+    <path>/var/lib/clickhouse/</path>
+    <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
+    <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
+
+    <logger>
+        <level>information</level>
+        <log>/var/log/clickhouse-server/clickhouse-server.log</log>
+        <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
+        <size>100M</size>
+        <count>5</count>
+    </logger>
+
+    <mark_cache_size>536870912</mark_cache_size>
+</clickhouse>
