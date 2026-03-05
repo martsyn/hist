@@ -19,6 +19,7 @@ const showEnqueue = ref(false)
 const enqSymbols = ref('')
 const enqType = ref('daily_bars')
 const enqPriority = ref('2')
+const enqStart = ref(`${new Date().getFullYear()}-01-01`)
 
 async function load() {
   loading.value = true
@@ -35,7 +36,7 @@ async function doEnqueue() {
   const symbols = enqSymbols.value.split(/[\s,]+/).map(s => s.trim()).filter(Boolean)
   if (!symbols.length) return
   try {
-    const result = await enqueueTask({ data_type: enqType.value, symbols, priority: parseInt(enqPriority.value) })
+    const result = await enqueueTask({ data_type: enqType.value, symbols, priority: parseInt(enqPriority.value), start: enqStart.value || undefined })
     toast.add({ severity: 'success', summary: 'Enqueued', detail: `${result.enqueued} tasks added`, life: 3000 })
     showEnqueue.value = false
     enqSymbols.value = ''
@@ -95,6 +96,10 @@ onMounted(load)
         <div>
           <label style="display:block; margin-bottom:0.25rem; font-size:0.85rem;">Data Type</label>
           <Select v-model="enqType" :options="DATA_TYPES" style="width:100%;" />
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:0.25rem; font-size:0.85rem;">Start Date (optional)</label>
+          <InputText v-model="enqStart" type="date" style="width:100%;" />
         </div>
         <div>
           <label style="display:block; margin-bottom:0.25rem; font-size:0.85rem;">Priority (0=highest, 4=lowest)</label>

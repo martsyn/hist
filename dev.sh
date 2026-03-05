@@ -18,13 +18,19 @@ fi
 # Start ClickHouse if not already running
 if ! docker ps --format '{{.Names}}' | grep -q '^hist-ch$'; then
   echo "Starting ClickHouse..."
+  # Remove stale lock file left by unclean shutdown
+  docker run --rm -v hist-ch-data:/var/lib/clickhouse alpine rm -f /var/lib/clickhouse/status
   docker run -d --name hist-ch --rm \
     -p 9000:9000 -p 8123:8123 \
+    -v hist-ch-data:/var/lib/clickhouse \
     -v "$SCRIPT_DIR/clickhouse/config.d:/etc/clickhouse-server/config.d:ro" \
     -v "$SCRIPT_DIR/clickhouse/users.d:/etc/clickhouse-server/users.d:ro" \
     clickhouse/clickhouse-server:24
   echo "Waiting for ClickHouse..."
-  until docker exec hist-ch clickhouse-client --query "SELECT 1" &>/dev/null; do sleep 1; done
+  for i in $(seq 1 30); do
+    docker exec hist-ch clickhouse-client --query "SELECT 1" &>/dev/null && break
+    sleep 2
+  done
   echo "ClickHouse ready."
 else
   echo "ClickHouse already running."

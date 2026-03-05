@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -27,6 +27,10 @@ async function load() {
     const data = await getQueue()
     pending.value = data.pending
     active.value = data.active
+    if (data.pending.length === 0 && data.active.length === 0 && interval) {
+      clearInterval(interval)
+      interval = null
+    }
   } catch (e: any) {
     toast.add({ severity: 'error', summary: 'Error', detail: e.message, life: 4000 })
   } finally {
@@ -57,11 +61,18 @@ function fmtTime(v: string) {
   return new Date(v).toLocaleTimeString()
 }
 
-onMounted(() => {
-  load()
-  interval = setInterval(load, 5000)
-})
-onUnmounted(() => { if (interval) clearInterval(interval) })
+function startPolling() {
+  if (!interval) interval = setInterval(load, 5000)
+}
+
+function stopPolling() {
+  if (interval) { clearInterval(interval); interval = null }
+}
+
+onMounted(() => { load(); startPolling() })
+onUnmounted(stopPolling)
+onActivated(() => { load(); startPolling() })
+onDeactivated(stopPolling)
 </script>
 
 <template>
