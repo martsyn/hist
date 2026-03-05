@@ -7,7 +7,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Build .NET app
-FROM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS dotnet-build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS dotnet-build
 WORKDIR /src
 COPY src/Hist.Server/Hist.Server.csproj ./Hist.Server/
 RUN dotnet restore ./Hist.Server/Hist.Server.csproj
@@ -33,10 +33,10 @@ RUN ARCH=$(uname -m) && \
     tar -C / -Jxpf /tmp/s6.tar.xz && \
     rm /tmp/s6*.tar.xz
 
-# Install ASP.NET Core 9 runtime
+# Install ASP.NET Core 10 runtime
 RUN wget -qO /tmp/dotnet-install.sh https://dot.net/v1/dotnet-install.sh && \
     chmod +x /tmp/dotnet-install.sh && \
-    /tmp/dotnet-install.sh --runtime aspnetcore --version 9.0.3 --install-dir /usr/share/dotnet && \
+    /tmp/dotnet-install.sh --runtime aspnetcore --channel 10.0 --install-dir /usr/share/dotnet && \
     ln -sf /usr/share/dotnet/dotnet /usr/local/bin/dotnet && \
     rm /tmp/dotnet-install.sh
 
