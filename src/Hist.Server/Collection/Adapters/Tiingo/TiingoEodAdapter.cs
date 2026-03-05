@@ -44,11 +44,6 @@ public class TiingoEodAdapter(
             int iLow         = Array.IndexOf(headers, "low");
             int iClose       = Array.IndexOf(headers, "close");
             int iVolume      = Array.IndexOf(headers, "volume");
-            int iAdjOpen     = Array.IndexOf(headers, "adjOpen");
-            int iAdjHigh     = Array.IndexOf(headers, "adjHigh");
-            int iAdjLow      = Array.IndexOf(headers, "adjLow");
-            int iAdjClose    = Array.IndexOf(headers, "adjClose");
-            int iAdjVolume   = Array.IndexOf(headers, "adjVolume");
             int iDivCash     = Array.IndexOf(headers, "divCash");
             int iSplitFactor = Array.IndexOf(headers, "splitFactor");
 
@@ -60,18 +55,13 @@ public class TiingoEodAdapter(
             {
                 var cols = line.TrimEnd('\r').Split(',');
                 var date    = DateOnly.FromDateTime(DateTime.Parse(cols[iDate], CultureInfo.InvariantCulture));
-                var open      = decimal.Parse(cols[iOpen],   CultureInfo.InvariantCulture);
-                var high      = decimal.Parse(cols[iHigh],   CultureInfo.InvariantCulture);
-                var low       = decimal.Parse(cols[iLow],    CultureInfo.InvariantCulture);
-                var close     = decimal.Parse(cols[iClose],  CultureInfo.InvariantCulture);
-                var volume    = ulong.Parse(cols[iVolume],   CultureInfo.InvariantCulture);
-                var adjOpen   = iAdjOpen   >= 0 ? decimal.Parse(cols[iAdjOpen],   CultureInfo.InvariantCulture) : 0m;
-                var adjHigh   = iAdjHigh   >= 0 ? decimal.Parse(cols[iAdjHigh],   CultureInfo.InvariantCulture) : 0m;
-                var adjLow    = iAdjLow    >= 0 ? decimal.Parse(cols[iAdjLow],    CultureInfo.InvariantCulture) : 0m;
-                var adjClose  = iAdjClose  >= 0 ? decimal.Parse(cols[iAdjClose],  CultureInfo.InvariantCulture) : 0m;
-                var adjVolume = iAdjVolume >= 0 ? (ulong)decimal.Parse(cols[iAdjVolume], CultureInfo.InvariantCulture) : 0ul;
+                var open   = decimal.Parse(cols[iOpen],   CultureInfo.InvariantCulture);
+                var high   = decimal.Parse(cols[iHigh],   CultureInfo.InvariantCulture);
+                var low    = decimal.Parse(cols[iLow],    CultureInfo.InvariantCulture);
+                var close  = decimal.Parse(cols[iClose],  CultureInfo.InvariantCulture);
+                var volume = ulong.Parse(cols[iVolume],   CultureInfo.InvariantCulture);
 
-                bars.Add(new DailyBar(symbol, date, open, high, low, close, volume, adjOpen, adjHigh, adjLow, adjClose, adjVolume));
+                bars.Add(new DailyBar(symbol, date, open, high, low, close, volume));
 
                 if (iDivCash >= 0)
                 {

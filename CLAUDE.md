@@ -30,5 +30,12 @@ ASP.NET Core 10 + ClickHouse + Vue 3/PrimeVue. Dev: `./dev.sh` (dotnet watch + D
 - PrimeVue `TabPanel` keeps all panels mounted — don't use `v-if` on direct children, use `onActivated`/`onDeactivated`
 - Vite dev server on `:5173`, API on `:8088`; vite.config proxies `/api` to backend
 
+## ClickHouse view gotchas
+- `FINAL` with a table alias in a JOIN causes syntax error — wrap in subquery: `FROM (SELECT * FROM t FINAL) alias`
+- Unmatched LEFT JOIN rows return 0 (not NULL) for Float64 — use `if(factor > 0, factor, 1.0)` not `coalesce`
+- Decimal arithmetic between different scales (e.g. Decimal(9,2) - Decimal(9,6)) overflows — cast each operand to Float64 first
+- Subquery alias prefixes column names: `FROM (SELECT * FROM t) b` → columns named `b.col` — add explicit `AS col` aliases
+- Dividend adjustment direction: `adj = raw / split_factor * div_factor` (multiply div, divide split) — div_factor < 1 reduces historical prices
+
 ## OoplesFinance earnings
 - `GetEarningsHistoryAsync` returns only ~4 recent quarters, no revenue data — known limitation of Yahoo's endpoint

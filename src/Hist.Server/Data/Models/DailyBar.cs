@@ -7,10 +7,5 @@ public record DailyBar(
     decimal High,
     decimal Low,
     decimal Close,
-    ulong Volume,
-    decimal AdjOpen,
-    decimal AdjHigh,
-    decimal AdjLow,
-    decimal AdjClose,
-    ulong AdjVolume
+    ulong Volume
 );

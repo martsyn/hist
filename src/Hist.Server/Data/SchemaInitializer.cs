@@ -17,18 +17,13 @@ public class SchemaInitializer(AppSettings settings, ILogger<SchemaInitializer> 
         {
             """
             CREATE TABLE IF NOT EXISTS daily_bars (
-                symbol     LowCardinality(String),
-                date       Date,
-                open       Decimal(9,2),
-                high       Decimal(9,2),
-                low        Decimal(9,2),
-                close      Decimal(9,2),
-                volume     UInt64,
-                adj_open   Decimal(12,4) DEFAULT 0,
-                adj_high   Decimal(12,4) DEFAULT 0,
-                adj_low    Decimal(12,4) DEFAULT 0,
-                adj_close  Decimal(12,4) DEFAULT 0,
-                adj_volume UInt64 DEFAULT 0
+                symbol LowCardinality(String),
+                date   Date,
+                open   Decimal(9,2),
+                high   Decimal(9,2),
+                low    Decimal(9,2),
+                close  Decimal(9,2),
+                volume UInt64
             ) ENGINE = ReplacingMergeTree()
             ORDER BY (symbol, date)
             """,
@@ -98,14 +93,14 @@ public class SchemaInitializer(AppSettings settings, ILogger<SchemaInitializer> 
             await cmd.ExecuteNonQueryAsync();
         }
 
-        // Migrations: add adj columns to daily_bars for existing installs
+        // Migrations: drop adj columns added in a previous revision
         var migrations = new[]
         {
-            "ALTER TABLE daily_bars ADD COLUMN IF NOT EXISTS adj_open   Decimal(12,4) DEFAULT 0",
-            "ALTER TABLE daily_bars ADD COLUMN IF NOT EXISTS adj_high   Decimal(12,4) DEFAULT 0",
-            "ALTER TABLE daily_bars ADD COLUMN IF NOT EXISTS adj_low    Decimal(12,4) DEFAULT 0",
-            "ALTER TABLE daily_bars ADD COLUMN IF NOT EXISTS adj_close  Decimal(12,4) DEFAULT 0",
-            "ALTER TABLE daily_bars ADD COLUMN IF NOT EXISTS adj_volume UInt64 DEFAULT 0",
+            "ALTER TABLE daily_bars DROP COLUMN IF EXISTS adj_open",
+            "ALTER TABLE daily_bars DROP COLUMN IF EXISTS adj_high",
+            "ALTER TABLE daily_bars DROP COLUMN IF EXISTS adj_low",
+            "ALTER TABLE daily_bars DROP COLUMN IF EXISTS adj_close",
+            "ALTER TABLE daily_bars DROP COLUMN IF EXISTS adj_volume",
         };
 
         foreach (var sql in migrations)
@@ -117,18 +112,56 @@ public class SchemaInitializer(AppSettings settings, ILogger<SchemaInitializer> 
         // Views
         var views = new[]
         {
-            // Split+dividend adjusted daily bars (uses Tiingo's pre-computed adj prices).
-            // Rows where adj_close = 0 are excluded (symbol not yet re-collected after migration).
+            // Split + dividend adjusted daily bars, computed on-the-fly from raw tables.
+            // Split adjustment: divide by product of split factors for splits AFTER bar date
+            //   (on the split day itself prices are already post-split, so condition is strictly >).
+            // Dividend adjustment: ratio method — (close_on_exdate - div) / close_on_exdate,
+            //   chained for all ex_dates AFTER bar date (on ex_date close is already ex-div).
+            // Volume is only split-adjusted (dividend payouts don't affect share count).
+            // Note: ClickHouse does not allow FINAL with a table alias directly in a JOIN;
+            // wrap FINAL tables in subqueries as a workaround.
             """
             CREATE OR REPLACE VIEW daily_bars_adjusted AS
-            SELECT symbol, date,
-                   adj_open   AS open,
-                   adj_high   AS high,
-                   adj_low    AS low,
-                   adj_close  AS close,
-                   adj_volume AS volume
-            FROM daily_bars FINAL
-            WHERE adj_close > 0
+            WITH
+            div_ratios AS (
+                SELECT d.symbol, d.ex_date,
+                       (toFloat64(b.close) - toFloat64(d.amount)) / toFloat64(b.close) AS ratio
+                FROM (SELECT * FROM dividends FINAL) d
+                JOIN (SELECT * FROM daily_bars FINAL) b
+                  ON b.symbol = d.symbol AND b.date = d.ex_date
+                WHERE toFloat64(b.close) > toFloat64(d.amount)
+            ),
+            split_adj AS (
+                SELECT b.symbol, b.date,
+                       exp(sumIf(
+                           log(toFloat64(s.numerator) / toFloat64(s.denominator)),
+                           s.date > b.date
+                       )) AS factor
+                FROM (SELECT DISTINCT symbol, date FROM daily_bars FINAL) b
+                LEFT JOIN (SELECT * FROM splits FINAL) s ON s.symbol = b.symbol
+                                                         AND s.numerator > 0 AND s.denominator > 0
+                GROUP BY b.symbol, b.date
+            ),
+            div_adj AS (
+                SELECT b.symbol, b.date,
+                       exp(sumIf(log(dr.ratio), dr.ex_date > b.date)) AS factor
+                FROM (SELECT DISTINCT symbol, date FROM daily_bars FINAL) b
+                LEFT JOIN div_ratios dr ON dr.symbol = b.symbol
+                GROUP BY b.symbol, b.date
+            )
+            SELECT b.symbol AS symbol, b.date AS date,
+                   b.open  / if(sa.factor > 0, sa.factor, 1.0)
+                           * if(da.factor > 0, da.factor, 1.0) AS open,
+                   b.high  / if(sa.factor > 0, sa.factor, 1.0)
+                           * if(da.factor > 0, da.factor, 1.0) AS high,
+                   b.low   / if(sa.factor > 0, sa.factor, 1.0)
+                           * if(da.factor > 0, da.factor, 1.0) AS low,
+                   b.close / if(sa.factor > 0, sa.factor, 1.0)
+                           * if(da.factor > 0, da.factor, 1.0) AS close,
+                   toUInt64(b.volume * if(sa.factor > 0, sa.factor, 1.0)) AS volume
+            FROM (SELECT * FROM daily_bars FINAL) b
+            JOIN split_adj sa ON sa.symbol = b.symbol AND sa.date = b.date
+            JOIN div_adj   da ON da.symbol = b.symbol AND da.date = b.date
             """,
 
             // Split-adjusted minute bars computed on-the-fly from the splits table.
