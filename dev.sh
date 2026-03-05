@@ -1,4 +1,6 @@
 #!/bin/bash
+# Use system dotnet (snap) over any Rider-managed SDK in ~/.dotnet
+export PATH="/snap/bin:$PATH"
 # Starts ClickHouse in Docker and runs the .NET app natively for fast iteration.
 # Set TIINGO_TOKEN in your environment or .env before running.
 set -e
