@@ -18,7 +18,7 @@ public class ClickHouseRepository(AppSettings settings, ILogger<ClickHouseReposi
         await using var conn = WriteConn();
         await conn.OpenAsync();
         await using var writer = await conn.CreateColumnWriterAsync(
-            "INSERT INTO daily_bars (symbol, date, open, high, low, close, volume) VALUES",
+            "INSERT INTO daily_bars (symbol, date, open, high, low, close, volume, adj_open, adj_high, adj_low, adj_close, adj_volume) VALUES",
             CancellationToken.None);
 
         await writer.WriteTableAsync(
@@ -30,7 +30,12 @@ public class ClickHouseRepository(AppSettings settings, ILogger<ClickHouseReposi
                 bars.Select(b => b.High).ToList(),
                 bars.Select(b => b.Low).ToList(),
                 bars.Select(b => b.Close).ToList(),
-                bars.Select(b => (ulong)b.Volume).ToList()
+                bars.Select(b => (ulong)b.Volume).ToList(),
+                bars.Select(b => b.AdjOpen).ToList(),
+                bars.Select(b => b.AdjHigh).ToList(),
+                bars.Select(b => b.AdjLow).ToList(),
+                bars.Select(b => b.AdjClose).ToList(),
+                bars.Select(b => b.AdjVolume).ToList(),
             },
             bars.Count,
             CancellationToken.None);
