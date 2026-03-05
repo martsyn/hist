@@ -21,7 +21,7 @@ var appSettings = new AppSettings
     Port = int.TryParse(Environment.GetEnvironmentVariable("PORT"), out var port) ? port : 8088,
     ClickHouse = new()
     {
-        Host = "127.0.0.1",
+        Host = Environment.GetEnvironmentVariable("CH_HOST") ?? "127.0.0.1",
         TcpPort = int.TryParse(Environment.GetEnvironmentVariable("CH_TCP_PORT"), out var chPort) ? chPort : 9000,
         WriteUser = Environment.GetEnvironmentVariable("CH_WRITE_USER") ?? "hist_writer",
         WritePassword = Environment.GetEnvironmentVariable("CH_WRITE_PASSWORD") ?? "changeme",
