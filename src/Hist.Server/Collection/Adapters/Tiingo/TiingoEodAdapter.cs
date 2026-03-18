@@ -29,10 +29,15 @@ public class TiingoEodAdapter(
             var response = await http.SendAsync(req, ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 return new CollectionResult(false, 0, "Symbol not found");
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                return new CollectionResult(false, 0, "Rate limited (HTTP 429)", RateLimited: true);
             if (!response.IsSuccessStatusCode)
                 return new CollectionResult(false, 0, $"HTTP {(int)response.StatusCode}");
 
             var csv = await response.Content.ReadAsStringAsync(ct);
+            // Tiingo returns a JSON error body (e.g. {"detail":"..."}) on rate limit, sometimes with HTTP 200
+            if (csv.TrimStart().StartsWith('{'))
+                return new CollectionResult(false, 0, $"Tiingo error: {csv.Trim()[..Math.Min(200, csv.Length)]}", RateLimited: true);
             var lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             if (lines.Length < 2)
                 return new CollectionResult(true, 0);

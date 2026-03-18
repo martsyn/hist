@@ -12,6 +12,9 @@ public class WorkerPool(
     ILogger<WorkerPool> logger
 ) : BackgroundService
 {
+    // Ticks of the UTC time after which collection may resume (0 = not suspended).
+    private long _suspendUntilTicks = 0;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var maxWorkers = settings.Tiingo.MaxThreads;
@@ -21,6 +24,13 @@ public class WorkerPool(
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            var suspendUntil = new DateTimeOffset(Interlocked.Read(ref _suspendUntilTicks), TimeSpan.Zero);
+            if (DateTimeOffset.UtcNow < suspendUntil)
+            {
+                await Task.Delay(5000, stoppingToken);
+                continue;
+            }
+
             if (!queue.TryDequeue(out var task))
             {
                 await Task.Delay(500, stoppingToken);
@@ -34,13 +44,35 @@ public class WorkerPool(
                 {
                     logger.LogInformation("Starting {DataType} for {Symbol}", task!.DataType, task.Symbol);
                     var result = await adapter.ExecuteAsync(task, stoppingToken);
-                    queue.CompleteTask(task.Id, result.Success, result.ErrorMessage);
-                    if (result.Success)
-                        logger.LogInformation("Completed {DataType} for {Symbol}: {Count} records",
-                            task.DataType, task.Symbol, result.RecordsWritten);
+
+                    if (result.RateLimited)
+                    {
+                        // Re-enqueue the task so it retries after the suspend window
+                        queue.Enqueue(new CollectionTask
+                        {
+                            Symbol   = task.Symbol,
+                            DataType = task.DataType,
+                            Start    = task.Start,
+                            Priority = task.Priority
+                        });
+                        // Suspend until the next hour boundary
+                        var nextHour = DateTimeOffset.UtcNow.AddHours(1);
+                        nextHour = new DateTimeOffset(nextHour.Year, nextHour.Month, nextHour.Day,
+                            nextHour.Hour, 0, 0, TimeSpan.Zero);
+                        Interlocked.Exchange(ref _suspendUntilTicks, nextHour.Ticks);
+                        logger.LogWarning("Tiingo rate limit hit — suspending until {Until:HH:mm} UTC", nextHour);
+                        queue.CompleteTask(task.Id, false, result.ErrorMessage);
+                    }
                     else
-                        logger.LogWarning("Failed {DataType} for {Symbol}: {Error}",
-                            task.DataType, task.Symbol, result.ErrorMessage);
+                    {
+                        queue.CompleteTask(task.Id, result.Success, result.ErrorMessage);
+                        if (result.Success)
+                            logger.LogInformation("Completed {DataType} for {Symbol}: {Count} records",
+                                task.DataType, task.Symbol, result.RecordsWritten);
+                        else
+                            logger.LogWarning("Failed {DataType} for {Symbol}: {Error}",
+                                task.DataType, task.Symbol, result.ErrorMessage);
+                    }
                 }
                 catch (Exception ex)
                 {
