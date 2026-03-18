@@ -18,6 +18,7 @@ ASP.NET Core 10 + ClickHouse + Vue 3/PrimeVue. Dev: `./dev.sh` (dotnet watch + D
 
 ## Tiingo
 - IEX intraday returns most recent N bars when no `endDate` — must paginate **backwards** using `endDate = earliest - 1 day`
+- Rate limit response: HTTP 200 with `content-type: text/csv` but body is `Error: You have run over your hourly request allocation...` — detect with `csv.StartsWith("Error:")`
 - Volume comes back as float string (e.g. `"2614.0"`) — parse as `(ulong)decimal.Parse(...)`
 - EOD endpoint: `/tiingo/daily/{sym}/prices?startDate=...&format=csv`
 - IEX intraday: `/iex/{sym}/prices?startDate=...&resampleFreq=1min&columns=date,open,high,low,close,volume&format=csv`

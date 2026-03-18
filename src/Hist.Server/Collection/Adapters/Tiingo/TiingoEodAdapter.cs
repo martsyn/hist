@@ -37,9 +37,10 @@ public class TiingoEodAdapter(
                 return new CollectionResult(false, 0, $"HTTP {(int)response.StatusCode}");
 
             var csv = await response.Content.ReadAsStringAsync(ct);
-            // Tiingo returns a JSON error body (e.g. {"detail":"..."}) on rate limit, sometimes with HTTP 200
-            if (csv.TrimStart().StartsWith('{'))
-                return new CollectionResult(false, 0, $"Tiingo error: {csv.Trim()[..Math.Min(200, csv.Length)]}", RateLimited: true);
+            // Tiingo returns a plain-text error with HTTP 200 on rate limit, e.g.:
+            // "Error: You have run over your hourly request allocation."
+            if (csv.StartsWith("Error:"))
+                return new CollectionResult(false, 0, csv.Trim(), RateLimited: true);
             var lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             if (lines.Length < 2)
                 return new CollectionResult(true, 0);
