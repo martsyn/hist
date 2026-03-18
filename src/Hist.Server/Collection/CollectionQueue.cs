@@ -9,9 +9,10 @@ namespace Hist.Server.Collection;
 public class CollectionQueue
 {
     private readonly Lock _lock = new();
-    private readonly PriorityQueue<CollectionTask, int> _queue = new();
+    private readonly PriorityQueue<CollectionTask, (int Priority, long Seq)> _queue = new();
     private readonly Dictionary<(string, DataType), CollectionTask> _index = new();
     private readonly Dictionary<Guid, CollectionTask> _active = new();
+    private long _seq = 0;
 
     public int PendingCount { get { lock (_lock) return _index.Count; } }
     public int ActiveCount { get { lock (_lock) return _active.Count; } }
@@ -32,7 +33,7 @@ public class CollectionQueue
                     existing.Priority = task.Priority;
                     // PriorityQueue doesn't support update; mark old as superseded
                     // by inserting a new entry — the old one will be skipped during dequeue
-                    _queue.Enqueue(task, (int)task.Priority);
+                    _queue.Enqueue(task, ((int)task.Priority, Interlocked.Increment(ref _seq)));
                     _index[key] = task;
                 }
                 // else ignore lower-priority re-enqueue
@@ -40,7 +41,7 @@ public class CollectionQueue
             }
 
             _index[key] = task;
-            _queue.Enqueue(task, (int)task.Priority);
+            _queue.Enqueue(task, ((int)task.Priority, Interlocked.Increment(ref _seq)));
         }
     }
 
@@ -113,7 +114,7 @@ public class CollectionQueue
                 if (task.Id == id)
                 {
                     task.Priority = priority;
-                    _queue.Enqueue(task, (int)priority);
+                    _queue.Enqueue(task, ((int)priority, Interlocked.Increment(ref _seq)));
                     return true;
                 }
             }
