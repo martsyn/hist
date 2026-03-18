@@ -31,7 +31,8 @@ var appSettings = new AppSettings
     Tiingo = new()
     {
         Token = Environment.GetEnvironmentVariable("TIINGO_TOKEN") ?? "",
-        MaxThreads = int.TryParse(Environment.GetEnvironmentVariable("TIINGO_MAX_THREADS"), out var tt) ? tt : 4
+        MaxThreads = int.TryParse(Environment.GetEnvironmentVariable("TIINGO_MAX_THREADS"), out var tt) ? tt : 4,
+        HourlyRequestLimit = int.TryParse(Environment.GetEnvironmentVariable("TIINGO_HOURLY_REQUEST_LIMIT"), out var rl) ? rl : 9500
     },
     Schedules = new()
     {
