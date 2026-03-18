@@ -11,6 +11,7 @@ public class TiingoEodAdapter(
     ClickHouseRepository repo,
     HttpClient http,
     string token,
+    TiingoRateLimiter rateLimiter,
     ILogger<TiingoEodAdapter> logger)
 {
     public async Task<CollectionResult> ExecuteAsync(CollectionTask task, CancellationToken ct)
@@ -24,6 +25,7 @@ public class TiingoEodAdapter(
             var url = $"https://api.tiingo.com/tiingo/daily/{Uri.EscapeDataString(symbol)}/prices" +
                       $"?startDate={startDate}&format=csv";
 
+            await rateLimiter.ThrottleAsync(ct);
             using var req = new HttpRequestMessage(HttpMethod.Get, url);
             req.Headers.Add("Authorization", $"Token {token}");
             var response = await http.SendAsync(req, ct);

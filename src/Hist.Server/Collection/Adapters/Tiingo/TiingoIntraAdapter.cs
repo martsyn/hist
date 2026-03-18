@@ -13,6 +13,7 @@ public class TiingoIntraAdapter(
     ClickHouseRepository repo,
     HttpClient http,
     string token,
+    TiingoRateLimiter rateLimiter,
     ILogger<TiingoIntraAdapter> logger)
 {
     public async Task<CollectionResult> ExecuteAsync(CollectionTask task, CancellationToken ct)
@@ -32,6 +33,7 @@ public class TiingoIntraAdapter(
                           $"&columns=date,open,high,low,close,volume&format=csv";
                 if (endStr != null) url += $"&endDate={endStr}";
 
+                await rateLimiter.ThrottleAsync(ct);
                 using var req = new HttpRequestMessage(HttpMethod.Get, url);
                 req.Headers.Add("Authorization", $"Token {token}");
                 var response = await http.SendAsync(req, ct);

@@ -60,15 +60,20 @@ builder.Services.AddSingleton<YahooClient>();
 
 // Adapters
 var tiingoToken = appSettings.Tiingo.Token;
+builder.Services.AddSingleton(sp => new TiingoRateLimiter(
+    appSettings.Tiingo.HourlyRequestLimit,
+    sp.GetRequiredService<ILogger<TiingoRateLimiter>>()));
 builder.Services.AddSingleton<TiingoEodAdapter>(sp => new TiingoEodAdapter(
     sp.GetRequiredService<ClickHouseRepository>(),
     sp.GetRequiredService<IHttpClientFactory>().CreateClient("tiingo"),
     tiingoToken,
+    sp.GetRequiredService<TiingoRateLimiter>(),
     sp.GetRequiredService<ILogger<TiingoEodAdapter>>()));
 builder.Services.AddSingleton<TiingoIntraAdapter>(sp => new TiingoIntraAdapter(
     sp.GetRequiredService<ClickHouseRepository>(),
     sp.GetRequiredService<IHttpClientFactory>().CreateClient("tiingo"),
     tiingoToken,
+    sp.GetRequiredService<TiingoRateLimiter>(),
     sp.GetRequiredService<ILogger<TiingoIntraAdapter>>()));
 builder.Services.AddSingleton<YahooEarningsAdapter>();
 builder.Services.AddSingleton<IDataAdapter, TiingoAdapter>();

@@ -29,6 +29,7 @@ public class TiingoSettings
 {
     public string Token { get; set; } = "";
     public int MaxThreads { get; set; } = 4;
+    public int HourlyRequestLimit { get; set; } = 9500;
 }
 
 public class ScheduleSettings
